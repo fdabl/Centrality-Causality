@@ -1,0 +1,2 @@
+# Centrality & Causality
+This repository includes the code to reproduce the simulation and figures presented in Dablander, F. & Hinne, M. (submitted). Centrality measures as a proxy for causal inference? A cautionary tale.
