@@ -6,19 +6,19 @@ registerDoParallel(10)
 # Read in simulation results and prepare them for plotting
 ##########################################################
 
-res <- readRDS('Simulation-Results/simres-mean-0.0-5-80.RDS')
-res <- readRDS('Simulation-Results/simres-mean-0.3-5-50.RDS')
+res <- readRDS('../Simulation-Results/simres-mean-0.0-5-80.RDS')
+res <- readRDS('../Simulation-Results/simres-mean-0.3-5-50.RDS')
 
 dcorr <- get_measure(res, compute_corr, 'lace')
 dclass <- get_measure(res,
                        function(simdat, p, measure) compute_class(simdat, p, topk = 1, measure),
                        measure = 'ce')
 
-dcorr <- readRDS('Simulation-Results/corr-mean-0.0-5-80.RDS')
-dclass <- readRDS('Simulation-Results/class-mean-0.0-5-80.RDS')
+dcorr <- readRDS('../Simulation-Results/corr-mean-0.0-5-80.RDS')
+dclass <- readRDS('../Simulation-Results/class-mean-0.0-5-80.RDS')
 
-dcorr <- readRDS('Simulation-Results/corr-mean-0.3-5-50.RDS')
-dclass <- readRDS('Simulation-Results/class-mean-0.3-5-50.RDS')
+dcorr <- readRDS('../Simulation-Results/corr-mean-0.3-5-50.RDS')
+dclass <- readRDS('../Simulation-Results/class-mean-0.3-5-50.RDS')
 
 remove <- paste0('Nodes: ', c(5, 40, 60, 70))
 remove <- paste0('Nodes: ', c(5))
