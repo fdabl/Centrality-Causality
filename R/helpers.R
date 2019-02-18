@@ -465,11 +465,66 @@ compute_class <- function(simdat, p, topk = 1, measure = 'ce') {
   } else if (measure == 'betweenness') {
     corrs <- c(res[5, 1, ], res[5, 2, ], res[5, 3, ], res[5, 4, ], res[5, 6, ], res[5, 7, ])
     m <- measures[-5]
+  } else if (measure == 'lace') {
+    corrs <- c(res[2, 1, ], res[2, 3, ], res[2, 4, ], res[2, 5, ], res[2, 6, ], res[2, 7, ])
+    m <- measures[-2]
   }
   
   data.frame(value = corrs, measure = rep(m, each = times))
 }
 
+#' Computes how successful the relative ranking of the node with the highest
+#' causal influence is according to centrality measures [reviewer's request]
+#'
+#' @param simdat a data.frame with the simulation results
+#' @param p the number of nodes
+#' @returns a list with mean and standard deviation of Spearman's rho
+compute_relative_ranking <- function(simdat, p, measure = 'ce') {
+  measures <- as.character(unique(simdat[, p + 1]))
+  
+  dat <- simdat[, seq(p + 1)]
+  n <- length(measures)
+  times <- table(simdat$measure)[1]
+  res <- array(dim = c(n, n, times))
+  
+  for (i in seq(n)) {
+    for (j in seq(i, n)) {
+      m1 <- dat[dat[, p + 1] == measures[i], -(p + 1)]
+      m2 <- dat[dat[, p + 1] == measures[j], -(p + 1)]
+      
+      for (k in seq(times)) {
+        if (i == j) {
+          res[i, j, k] <- 1
+        } else {
+          r1 <- order(m1[k, ], decreasing = TRUE)
+          r2 <- order(m2[k, ], decreasing = TRUE)
+          
+          # what is the position of the highest causally effective node
+          # when ranked according to centrality measures?
+          relative_rank <- which(r1[1] == r2)
+          
+          res[i, j, k] <- res[j, i, k] <- ifelse(
+            any(is.na(m1[k, ])) || any(is.na(m2[k, ])), NA,
+            relative_rank
+          )
+        }
+      }
+    }
+  }
+  
+  if (measure == 'ce') {
+    corrs <- c(res[1, 2, ], res[1, 3, ], res[1, 4, ], res[1, 5, ], res[1, 6, ], res[1, 7, ])
+    m <- measures[-1]
+  } else if (measure == 'betweenness') {
+    corrs <- c(res[5, 1, ], res[5, 2, ], res[5, 3, ], res[5, 4, ], res[5, 6, ], res[5, 7, ])
+    m <- measures[-5]
+  } else if (measure == 'lace') {
+    corrs <- c(res[2, 1, ], res[2, 3, ], res[2, 4, ], res[2, 5, ], res[2, 6, ], res[2, 7, ])
+    m <- measures[-2]
+  }
+  
+  data.frame(value = corrs, measure = rep(m, each = times))
+}
 
 
 #' Wrapper function to run the simulation
@@ -600,6 +655,9 @@ plot_single <- function(dag, mrf, network_measure = 'Betweenness', causal_measur
   graph <- ggplot(dat, aes(x = Node, y = Value, colour = Measure, group = Measure)) +
     geom_point() +
     geom_line() +
+  # graph <- ggplot(dat, aes(x = Node, y = Value, fill = Measure, group = Measure)) +
+  #   geom_bar(stat = 'identity', position = 'dodge', width = .1) +
+  #   # geom_point() +
     scale_colour_discrete(name='') +
     scale_y_continuous(
       breaks = scales::pretty_breaks(n = 11)
@@ -624,15 +682,25 @@ plot_single <- function(dag, mrf, network_measure = 'Betweenness', causal_measur
 #' @param n is the number of simulation repetitions per configuration
 #' @param class is a boolean indicating whether to plot correlation or classification
 #' @returns NULL
-plot_mean_results <- function(dat, title, n = 500, class = FALSE) {
+plot_mean_results <- function(dat, title, n = 500, type = 'correlation', max_size = 50) {
   nodes <- sapply(strsplit(as.character(dat$nodes), ':'), function(x) as.numeric(x[2]))
   dat$hline <- 1/nodes
   
-  ytitle <- ifelse(class, 'Probability Correct\n', 'Rank Correlation\n')
+  if (type == 'correlation') {
+    ytitle <- 'Rank Correlation\n'
+  }
+  
+  if (type == 'classification') {
+    ytitle <- 'Probability Correct\n'
+  }
+  
+  if (type == 'ranking') {
+    ytitle <- 'Relative Rank\n'
+  }
   
   p <- ggplot(dat, aes(x = conn, y = mean, colour = measure, order = measure))
     
-  if (class) {
+  if (type == 'classification') {
     p <- p + geom_hline(aes(yintercept = hline))
   }
   
@@ -645,24 +713,42 @@ plot_mean_results <- function(dat, title, n = 500, class = FALSE) {
     ggtitle(title) +
     theme_pubclean() +
     theme(panel.grid.major = element_blank(), 
-          panel.grid.major.y = element_line( size=.1, color="black") ,
+          panel.grid.major.y = element_line(size = .1, color="black") ,
           plot.title = element_text(hjust = .5),
           text = element_text(size = 16)) +
     scale_colour_manual(name = '', values = RColorBrewer::brewer.pal(n = 6, 'Set1'))
     
-  if (class) {
+  if (type == 'classification') {
     p <- p + 
       scale_y_continuous(breaks = scales::pretty_breaks(n = 11), limits = c(0, .35)) +
       geom_errorbar(aes(ymin = pmax(mean - 1.96 * sqrt(mean * (1 - mean) / n), 0),
                         ymax = pmin(mean + 1.96 * sqrt(mean * (1 - mean) / n), 1)),
                     width = .2, size = .5, position = position_dodge(.9))
     
-  } else {
+  }
+  
+  if (type == 'correlation') {
     p <- p + 
       scale_y_continuous(breaks = scales::pretty_breaks(n = 11), limits = c(-1, 1)) +
       geom_errorbar(aes(ymin = pmax(mean - 1.96 * sd/sqrt(n), -.5),
                         ymax = pmin(mean + 1.96 * sd/sqrt(n), 1)),
                     width = .2, size = .5, position = position_dodge(.9))
+  }
+  
+  if (type == 'ranking') {
+    if (max_size == 50) {
+      ymax <- rep(seq(10, 50, 10), each = 216)
+    } else {
+      ymax <- rep(c(10, 20, 30, 50, 80), each = 216)
+    }
+    p <- p +
+      facet_wrap(~ type + nodes, ncol = length(unique(dat$nodes)), scales = 'free_y') +
+      geom_blank(aes(y = 1)) +
+      geom_blank(aes(y = ymax)) +
+      geom_errorbar(
+        aes(ymin = mean - 1.96 * sd/sqrt(n), ymax = mean + 1.96 * sd/sqrt(n)),
+        width = .2, size = .5, position = position_dodge(.9)
+      )
   }
   
   p
