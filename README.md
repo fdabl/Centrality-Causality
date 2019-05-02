@@ -1,2 +1,2 @@
 # Centrality & Causality
-This repository includes the code to reproduce the simulation and figures presented in Dablander, F. & Hinne, M. (submitted). Centrality measures as a proxy for causal inference? A cautionary tale.
+This repository includes the code to reproduce the simulation and figures presented in Dablander, F. & Hinne, M. ([2019](https://www.nature.com/articles/s41598-019-43033-9)). Node centrality measures are a poor substitute for causal inference. *Scientific Reports, 9*, 6846.
